@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Knights Prime AI</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family:sans-serif; text-align:center; padding:20px; background:#0a0a0a; color:white; }
+    header { display:flex; justify-content:space-between; padding:10px 20px; border-bottom:1px solid #333; position:sticky; top:0; background:#0a0a0a; }
+    #postbook { font-weight:bold; font-size:18px; color:#7c3aed; }
+    input, select, button { margin:8px; padding:12px; border-radius:8px; border:none; font-size:15px; }
+    button { background:#7c3aed; color:white; cursor:pointer; font-weight:bold; }
+    button:hover { background:#9333ea; }
+   .actions { margin-top:10px; }
+   .actions button { background:#333; margin:5px; }
+   .actions button:hover { background:#555; }
+    #result img, #result video { max-width:90%; border-radius:12px; margin-top:15px; border:2px solid #7c3aed; }
+    #loading { color:#a78bfa; }
+  </style>
+</head>
+<body>
+  <header>
+    <div id="postbook">Postbook</div>
+    <button id="auth-btn">Login / Sign up</button>
+  </header>
+
+  <h1>Knights Prime AI</h1>
+  <p>Upload to animate/style it. Or just type to generate from scratch</p>
+
+  <input id="prompt" placeholder='Ex: animate it, turn into anime, cyberpunk style' style="width:70%; max-width:500px;" />
+  <br>
+  <input type="file" id="upload" accept="image/*,video/*" />
+  <br>
+  <select id="type">
+    <option value="image">Generate Image</option>
+    <option value="video">Generate Video</option>
+  </select>
+  <button onclick="generate()">Generate</button>
+
+  <div id="result"></div>
+
+  <script async crossorigin="anonymous"
+    src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"></script>
+  <script>
+    let clerk;
+    let uploadedFile = null;
+    let lastResultUrl = "";
+
+    // 1. Load Clerk
+    async function start() {
+      const res = await fetch('/.netlify/functions/get-key');
+      const data = await res.json();
+      clerk = new Clerk(data.key);
+      await clerk.load();
+      document.getElementById('auth-btn').onclick = () => clerk.openSignIn();
+      clerk.addListener(({ user }) => {
+        document.getElementById('auth-btn').innerText = user? "My Account" : "Login / Sign up";
+      })
+    }
+    start();
+
+    // 2. Save uploaded file
+    document.getElementById('upload').onchange = (e) => {
+      uploadedFile = e.target.files[0];
+    }
+
+    // 3. Show result with actions
+    function showResult(type, url) {
+      lastResultUrl = url;
+      const media = type === 'image'
+      ? `<img src="${url}" />`
+        : `<video controls src="${url}"></video>`;
+
+      document.getElementById('result').innerHTML = `
+        ${media}
+        <div class="actions">
+          <button onclick="download()">Download ⬇️</button>
+          <button onclick="share()">Share ⬆️</button>
+          <button onclick="post()">Post on Postbook ⏫</button>
+        </div>
+      `;
+    }
+
+    // 4. Generate - calls fal backend
+    async function generate() {
+      const prompt = document.getElementById('prompt').value;
+      const type = document.getElementById('type').value;
+
+      // RULE 2: Video needs login
+      if (type === 'video' &&!clerk.user) {
+        clerk.openSignIn({ afterSignInUrl: window.location.href });
+        return;
+      }
+      if(!prompt){ alert("Please type a prompt first"); return; }
+
+      document.getElementById('result').innerHTML = `<p id="loading">Generating with fal.ai... this takes 20-40s</p>`;
+
+      let fileBase64 = null;
+      let mimeType = null;
+
+      if (uploadedFile) {
+        const buffer = await uploadedFile.arrayBuffer();
+        fileBase64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+        mimeType = uploadedFile.type;
+      }
+
+      try {
+        const res = await fetch('/.netlify/functions/generate', {
+          method: 'POST',
+          body: JSON.stringify({ prompt, type, fileBase64, mimeType })
+        });
+
+        const data = await res.json();
+        if(data.error){
+          document.getElementById('result').innerHTML = `<p style="color:red">Error: ${data.error}</p>`;
+          return;
+        }
+        showResult(type, data.url);
+      } catch(err) {
+        document.getElementById('result').innerHTML = `<p style="color:red">Failed to connect to AI. Check Netlify logs.</p>`;
+      }
+    }
+
+    // 5. Postbook - RULE 3: needs login
+    function post() {
+      if (!clerk.user) {
+        clerk.openSignIn({ afterSignInUrl: window.location.href });
+        return;
+      }
+      alert("Posted to Postbook! ✅");
+    }
+
+    function download() {
+      const a = document.createElement('a');
+      a.href = lastResultUrl;
+      a.download = 'knightsprime-ai';
+      a.click();
+    }
+    function share() {
+      navigator.share? navigator.share({title: "Knights Prime AI", url: lastResultUrl})
+      : navigator.clipboard.writeText(lastResultUrl).then(()=>alert("Link copied!"));
+    }
+  </script>
+</body>
+</html>
