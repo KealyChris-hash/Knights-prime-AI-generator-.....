@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Knights Prime AI ⚔️</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600&family=Poppins&display=swap');
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: #050505;
+      color: #e0e0e0;
+      max-width: 750px;
+      margin: auto;
+      padding: 20px;
+      background-image: radial-gradient(#222 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+    h1 { text-align: center; font-family: 'Cinzel', serif; color: #ff3d00; text-shadow: 0 0 10px #ff3d00; }
+  .card { background: #111; padding: 18px; border-radius: 14px; margin: 18px 0; border: 1px solid #333; box-shadow: 0 0 15px rgba(255,61,0,0.1); }
+    input, textarea, select, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #333; background: #1a1a1a; color: white; box-sizing: border-box; font-size: 14px; }
+    button { background: linear-gradient(90deg, #ff3d00, #ff8c00); font-weight: bold; cursor: pointer; border: none; transition: 0.2s; }
+    button:hover { transform: scale(1.03); box-shadow: 0 0 15px #ff3d00; }
+    #app { display: none; }
+    img, video { max-width: 100%; border-radius: 10px; margin-top: 10px; border: 1px solid #333; }
+    label { font-size: 12px; opacity: 0.7; }
+    #clerk-auth { max-width: 400px; margin: 50px auto; }
+  .post-meta { display: flex; justify-content: space-between; font-size: 12px; opacity: 0.6; }
+  </style>
+  <script async crossorigin="anonymous" data-clerk-publishable-key="pk_test_ZmxlZXQtcGlrYS01NC5jbGVyay5hY2NvdW50cy5kZXYk" src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"></script>
+</head>
+<body>
+  <h1>Knights Prime AI ⚔️</h1>
+  <div id="clerk-auth"></div>
+
+  <div id="app">
+    <div style="text-align:right"><button onclick="Clerk.signOut()">Logout</button></div>
+
+    <h2>AI Generator</h2>
+    <div class="card">
+      <input id="prompt" placeholder="Describe: knight fighting dragon in castle" />
+      <label>Style</label>
+      <select id="style">
+        <option value="anime style, studio ghibli, highly detailed">Anime</option>
+        <option value="cinematic, movie poster, dramatic lighting, 4k">Cinematic</option>
+        <option value="3d render, unreal engine, fantasy">3D Render</option>
+        <option value="oil painting, fantasy art, by greg rutkowski">Oil Painting</option>
+        <option value="knight armor, dark fantasy, epic">Knights Prime</option>
+      </select>
+      <label>Type</label>
+      <select id="type"><option value="image">Image</option><option value="video">Video</option></select>
+      <button onclick="generateAI()">Generate ⚔️</button>
+      <div id="ai-result"></div>
+    </div>
+
+    <h2>PostBook</h2>
+    <div class="card">
+      <textarea id="text" placeholder="Share your creation..." rows="3"></textarea>
+      <input id="image_url" placeholder="Media URL - auto filled after AI" />
+      <button onclick="createPost()">Post to Knights</button>
+    </div>
+
+    <div id="feed">Loading feed...</div>
+  </div>
+
+<script>
+// CONFIG - CHANGE THESE 2
+const BIN_ID = "6a64ab9df5f4af5e29bf841f";
+const MASTER_KEY = "$2a$10$otvMxIWUOKw5TjMswWxjDO8.72tOovwUh93PIeXblec9OZ0nTuDsW";
+const REPLICATE_KEY = "r8_Gh0xFAiXOk8fUpEmU4Fy0d7Q6tOnJ4p2hpZ8N";
+const API_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+
+// CLERK LOGIN
+window.addEventListener('load', async () => {
+  await Clerk.load();
+  if (Clerk.user) {
+    document.getElementById("app").style.display = "block";
+    document.getElementById("clerk-auth").style.display = "none";
+    loadFeed();
+  } else { Clerk.mountSignIn(document.getElementById("clerk-auth")); }
+});
+
+// AI GENERATOR
+async function generateAI() {
+  const prompt = document.getElementById("prompt").value;
+  const style = document.getElementById("style").value;
+  const type = document.getElementById("type").value;
+  if(!prompt) return alert("Add a prompt");
+  const fullPrompt = `${prompt}, ${style}`;
+  document.getElementById("ai-result").innerHTML = "⚔️ Forging... 20-40s";
+  const model = type === "video"? "anotherai/animatediff" : "stability-ai/sdxl";
+  const res = await fetch("https://api.replicate.com/v1/predictions", { method: "POST", headers: { "Authorization": `Token ${REPLICATE_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ version: model, input: { prompt: fullPrompt } }) });
+  let prediction = await res.json();
+  while(prediction.status!== "succeeded" && prediction.status!== "failed") { await new Promise(r => setTimeout(r, 3000)); const r = await fetch(`https://api.replicate.com/v1/predictions/${prediction.id}`, {headers: {"Authorization": `Token ${REPLICATE_KEY}`}}); prediction = await r.json(); }
+  const url = prediction.output[prediction.output.length - 1];
+  const tag = type === "video"? `<video src="${url}" controls autoplay loop></video>` : `<img src="${url}" />`;
+  document.getElementById("ai-result").innerHTML = tag;
+  document.getElementById("text").value = `Generated: ${fullPrompt}`;
+  document.getElementById("image_url").value = url;
+}
+
+// POSTBOOK
+async function loadFeed() {
+  const res = await fetch(API_URL + "/latest", { headers: { "X-Master-Key": MASTER_KEY } });
+  const data = await res.json();
+  const posts = data.record || [];
+  document.getElementById("feed").innerHTML = posts.length? posts.map((p, i) => `
+    <div class="card">
+      <div class="post-meta"><b>${p.username}</b> <span>${p.time}</span></div>
+      <p>${p.text}</p>
+      ${p.image_url?.includes('.mp4')? `<video src="${p.image_url}" controls></video>` : p.image_url? `<img src="${p.image_url}" />` : ""}
+      <button onclick="like(${i})">⚔️ Like ${p.likes}</button>
+    </div>
+  `).join("") : "<p>No posts yet. Be the first Knight!</p>";
+}
+
+async function createPost() {
+  const text = document.getElementById("text").value;
+  if(!text) return alert("Add text");
+  const username = Clerk.user.firstName || "Knight";
+  const res = await fetch(API_URL + "/latest", { headers: { "X-Master-Key": MASTER_KEY } });
+  const data = await res.json();
+  const posts = data.record || [];
+  posts.unshift({ username, text, image_url: document.getElementById("image_url").value, likes: 0, time: new Date().toLocaleString() });
+  await fetch(API_URL, { method: "PUT", headers: { "Content-Type": "application/json", "X-Master-Key": MASTER_KEY }, body: JSON.stringify(posts) });
+  document.getElementById("text").value = ""; document.getElementById("image_url").value = ""; loadFeed();
+}
+
+async function like(index) {
+  const res = await fetch(API_URL + "/latest", { headers: { "X-Master-Key": MASTER_KEY } });
+  const data = await res.json();
+  const posts = data.record || [];
+  posts[index].likes++;
+  await fetch(API_URL, { method: "PUT", headers: { "Content-Type": "application/json", "X-Master-Key": MASTER_KEY }, body: JSON.stringify(posts) });
+  loadFeed();
+}
+</script>
+</body>
+</html>
