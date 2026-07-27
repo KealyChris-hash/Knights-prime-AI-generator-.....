@@ -26,7 +26,7 @@
 
   <!-- HEADER -->
   <header>
-    <h2 onclick="openPostbook()">Postbook</h2>
+    <h2 id="postbook-title">Postbook</h2>
     <div id="auth-button"></div>
   </header>
 
@@ -35,66 +35,131 @@
     <h1>Knights Prime AI Generator</h1>
     <p>Create AI videos and posts. Login required.</p>
     
-    <button class="btn" onclick="generateVideo()">Generate Video</button>
-    <button class="btn" onclick="openPostbook()">Open Postbook</button>
+    <button id="generate-btn" class="btn">Generate Video</button>
+    <button id="postbook-btn" class="btn">Open Postbook</button>
     
     <div id="result" style="margin-top:20px;"></div>
   </div>
 
   <script>
-    // WAIT FOR CLERK TO LOAD
-    window.addEventListener('load', async () => {
-      await Clerk.load();
-      updateAuthButton();
-    });
+    // Helper to safely access Clerk
+    function clerkAvailable() {
+      return typeof window.Clerk !== 'undefined' && window.Clerk;
+    }
+
+    async function initClerk() {
+      if (!clerkAvailable()) return null;
+      try {
+        // Clerk.load returns a promise that resolves when clerk is ready
+        await window.Clerk.load();
+        return window.Clerk;
+      } catch (e) {
+        console.error('Clerk failed to load', e);
+        return null;
+      }
+    }
 
     // UPDATE TOP RIGHT BUTTON
     function updateAuthButton() {
       const authDiv = document.getElementById("auth-button");
-      if (Clerk.user) {
-        authDiv.innerHTML = `<span>Hi ${Clerk.user.firstName}</span> 
-                             <button onclick="Clerk.signOut()">Sign Out</button>`;
+      if (!authDiv) return;
+
+      const user = (clerkAvailable() && Clerk.user) ? Clerk.user : null;
+
+      if (user) {
+        authDiv.innerHTML = `<span style="margin-right:8px">Hi ${user.firstName || user.fullName || user.primaryEmailAddress || 'there'}</span> 
+                             <button id="signout-btn">Sign Out</button>`;
+        const signOutBtn = document.getElementById('signout-btn');
+        if (signOutBtn) signOutBtn.addEventListener('click', async () => {
+          try { await Clerk.signOut(); } catch (e) { console.error('Sign out failed', e); }
+        });
       } else {
-        authDiv.innerHTML = `<button onclick="Clerk.openSignUp()">Sign Up</button> 
-                             <button onclick="Clerk.openSignIn()">Login</button>`;
+        authDiv.innerHTML = `<button id="signup-btn">Sign Up</button> 
+                             <button id="login-btn">Login</button>`;
+        const signupBtn = document.getElementById('signup-btn');
+        const loginBtn = document.getElementById('login-btn');
+        if (signupBtn) signupBtn.addEventListener('click', () => { Clerk.openSignUp(); });
+        if (loginBtn) loginBtn.addEventListener('click', () => { Clerk.openSignIn(); });
       }
+
+      // Enable/disable main buttons based on login state
+      const generateBtn = document.getElementById('generate-btn');
+      const postbookBtn = document.getElementById('postbook-btn');
+      if (generateBtn) generateBtn.disabled = !user;
+      if (postbookBtn) postbookBtn.disabled = !user;
     }
-    Clerk.addListener(updateAuthButton);
 
     // LOGIN GUARD
     function requireLogin() {
-      if (!Clerk.user) {
-        Clerk.openSignIn();
+      if (!clerkAvailable() || !Clerk.user) {
+        if (clerkAvailable()) Clerk.openSignIn();
+        else alert('Authentication service is not available.');
         return false;
       }
       return true;
     }
 
-    // POSTBOOK BUTTON
+    // POSTBOOK NAV
     function openPostbook() {
       if (!requireLogin()) return;
+      // Navigate to the postbook page
       window.location.href = "/postbook.html"; // make sure you have this file
     }
 
-    // GENERATE VIDEO BUTTON
+    // GENERATE VIDEO
     async function generateVideo() {
       if (!requireLogin()) return;
-      
+
       const resultDiv = document.getElementById("result");
       resultDiv.innerText = "Generating...";
-      
+
       try {
         const res = await fetch('/functions/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ prompt: "knight in armor" })
         });
+        if (!res.ok) throw new Error(`Request failed (${res.status})`);
         const data = await res.json();
         resultDiv.innerText = "Done! " + JSON.stringify(data);
       } catch (e) {
-        resultDiv.innerText = "Error: " + e.message;
+        console.error(e);
+        resultDiv.innerText = "Error: " + (e.message || e);
       }
     }
+
+    // Wire up UI after DOM ready
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Attach events to static elements
+      document.getElementById('postbook-title').addEventListener('click', openPostbook);
+      document.getElementById('postbook-btn').addEventListener('click', openPostbook);
+      document.getElementById('generate-btn').addEventListener('click', generateVideo);
+
+      // Initialize Clerk if available
+      const clerk = await initClerk();
+      updateAuthButton();
+
+      // Some Clerk builds expose an event system; try to add a listener if available
+      try {
+        if (clerk && typeof Clerk.addListener === 'function') {
+          Clerk.addListener(() => updateAuthButton());
+        } else if (clerk && Clerk.on) {
+          // older/newer variants
+          Clerk.on('change', () => updateAuthButton());
+        }
+      } catch (e) {
+        // not fatal
+        console.debug('No Clerk listener API available', e);
+      }
+
+      // Fallback: poll for user (short lived) in case Clerk doesn't provide events
+      let pollCount = 0;
+      const poll = setInterval(() => {
+        pollCount += 1;
+        if (Clerk && Clerk.user) { updateAuthButton(); clearInterval(poll); }
+        if (pollCount > 20) clearInterval(poll); // stop after ~20 tries (~10s)
+      }, 500);
+    });
   </script>
 </body>
 </html>
