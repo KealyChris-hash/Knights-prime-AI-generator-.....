@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Postbook — Knights Prime AI</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #0a0a0a; color: #fff; margin: 0; }
+    header { display:flex; justify-content:space-between; align-items:center; padding:16px 24px; border-bottom:1px solid #222; }
+    a.button, button { background:#ffd700; color:#000; border:none; padding:8px 12px; border-radius:8px; cursor:pointer; text-decoration:none; }
+    .container { padding:24px; max-width:900px; margin:0 auto; }
+    label { display:block; margin-top:12px; }
+    input, textarea { width:100%; padding:8px; margin-top:6px; border-radius:6px; border:1px solid #333; background:#0f0f0f; color:#fff; }
+    .row { display:flex; gap:12px; align-items:center; }
+    .post { border:1px solid #222; padding:12px; border-radius:8px; margin-top:12px; background:linear-gradient(180deg,#080808,#0d0d0d); }
+    .muted { color:#bbb; font-size:0.9rem; }
+    .btn { background:#ffd700; color:#000; border:none; padding:10px 16px; border-radius:8px; cursor:pointer; }
+    .btn:disabled { opacity:0.5; cursor:not-allowed; }
+  </style>
+
+  <!-- CLERK -->
+  <script async crossorigin="anonymous" data-clerk-publishable-key="pk_test_YXBwYXJlbnQtd2lsZGNhdC04My5jbGVyay5hY2NvdW50cy5kZXYk" src="https://app.releases.clerk.dev/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"></script>
+</head>
+<body>
+  <header>
+    <a class="button" href="/index.html">← Back</a>
+    <div id="auth-button"></div>
+  </header>
+
+  <main class="container">
+    <h1>Postbook</h1>
+    <p class="muted">Create and view posts. Login required to create a post.</p>
+
+    <section id="create-section">
+      <h2>Create a post</h2>
+      <div>
+        <label for="title">Title</label>
+        <input id="title" placeholder="Your post title" />
+
+        <label for="content">Content</label>
+        <textarea id="content" rows="6" placeholder="Write something..."></textarea>
+
+        <div style="margin-top:12px;">
+          <button id="create-btn" class="btn">Create Post</button>
+        </div>
+
+        <div id="create-result" style="margin-top:12px;color:#ffd700"></div>
+      </div>
+    </section>
+
+    <section style="margin-top:28px;">
+      <h2>Recent posts</h2>
+      <div id="posts">Loading posts...</div>
+    </section>
+  </main>
+
+  <script>
+    // Minimal Clerk helper
+    function clerkAvailable() {
+      return typeof window.Clerk !== 'undefined' && window.Clerk;
+    }
+
+    async function initClerk() {
+      if (!clerkAvailable()) return null;
+      try { await window.Clerk.load(); return window.Clerk; } catch (e) { console.error('Clerk failed to load', e); return null; }
+    }
+
+    function updateAuthButton() {
+      const authDiv = document.getElementById('auth-button');
+      if (!authDiv) return;
+      const user = (clerkAvailable() && Clerk.user) ? Clerk.user : null;
+      if (user) {
+        authDiv.innerHTML = `<span style="margin-right:8px">Hi ${user.firstName || user.fullName || 'there'}</span><button id="signout" class="button">Sign Out</button>`;
+        const s = document.getElementById('signout'); if (s) s.addEventListener('click', async () => { try { await Clerk.signOut(); } catch (e) { console.error(e); } });
+      } else {
+        authDiv.innerHTML = `<button id="signup" class="button">Sign Up</button> <button id="signin" class="button">Login</button>`;
+        const su = document.getElementById('signup'); const si = document.getElementById('signin');
+        if (su) su.addEventListener('click', () => Clerk.openSignUp());
+        if (si) si.addEventListener('click', () => Clerk.openSignIn());
+      }
+
+      // Toggle create button
+      const createBtn = document.getElementById('create-btn');
+      if (createBtn) createBtn.disabled = !user;
+    }
+
+    function requireLogin() {
+      if (!clerkAvailable() || !Clerk.user) {
+        if (clerkAvailable()) Clerk.openSignIn(); else alert('Auth service not available');
+        return false;
+      }
+      return true;
+    }
+
+    async function fetchPosts() {
+      const postsDiv = document.getElementById('posts');
+      postsDiv.innerText = 'Loading posts...';
+      try {
+        const res = await fetch('/functions/posts');
+        if (!res.ok) throw new Error('Failed to load posts');
+        const data = await res.json();
+        renderPosts(data);
+      } catch (e) {
+        console.warn('Fetch posts failed, using fallback', e);
+        // Fallback sample posts
+        renderPosts([{ id:1, title:'Welcome', content:'This is a sample post.' }]);
+      }
+    }
+
+    function renderPosts(posts) {
+      const postsDiv = document.getElementById('posts');
+      if (!posts || posts.length === 0) { postsDiv.innerHTML = '<div class="muted">No posts yet.</div>'; return; }
+      postsDiv.innerHTML = posts.map(p => `<article class="post"><h3>${escapeHtml(p.title)}</h3><div class="muted">${p.id ? 'id: '+p.id : ''}</div><p>${escapeHtml(p.content)}</p></article>`).join('');
+    }
+
+    function escapeHtml(str){ if(!str) return ''; return String(str).replace(/[&<>"']/g, function(s){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[s];}); }
+
+    async function createPost() {
+      if (!requireLogin()) return;
+      const title = document.getElementById('title').value.trim();
+      const content = document.getElementById('content').value.trim();
+      const resultDiv = document.getElementById('create-result');
+      if (!title || !content) { resultDiv.innerText = 'Please provide title and content.'; return; }
+      resultDiv.innerText = 'Creating...';
+      try {
+        const res = await fetch('/functions/createPost', {
+          method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ title, content })
+        });
+        if (!res.ok) throw new Error('Create failed');
+        const data = await res.json();
+        resultDiv.innerText = 'Created — ' + (data.id ? 'id: '+data.id : 'success');
+        // Clear form
+        document.getElementById('title').value = '';
+        document.getElementById('content').value = '';
+        // Refresh list
+        fetchPosts();
+      } catch (e) {
+        console.error(e);
+        resultDiv.innerText = 'Error creating post.';
+      }
+    }
+
+    // Wire up on DOM ready
+    document.addEventListener('DOMContentLoaded', async () => {
+      document.getElementById('create-btn').addEventListener('click', createPost);
+      // Init clerk and UI
+      const clerk = await initClerk();
+      updateAuthButton();
+      try {
+        if (clerk && typeof Clerk.addListener === 'function') Clerk.addListener(updateAuthButton);
+        else if (clerk && Clerk.on) Clerk.on('change', updateAuthButton);
+      } catch (e) { console.debug('No clerk listener', e); }
+
+      // Poll briefly in case change event doesn't fire
+      let tries = 0; const poll = setInterval(()=>{ tries++; if (Clerk && Clerk.user){ updateAuthButton(); clearInterval(poll);} if (tries>20) clearInterval(poll); }, 500);
+
+      // Load posts
+      fetchPosts();
+    });
+  </script>
+</body>
+</html>
