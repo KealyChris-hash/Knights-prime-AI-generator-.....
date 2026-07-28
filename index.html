@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Knights Prime AI Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root { --gold:#FFD700; --gold-dark:#B8860B; --card:rgba(25,25,25,0.85); }
+* { box-sizing:border-box; }
+body { font-family: 'Poppins'; background: radial-gradient(circle at 50% 0%, #1a1a1a 0%, #000 100%); color:#fff; text-align:center; padding:0; margin:0; }
+.header { padding:20px 10px 10px; background: linear-gradient(180deg, rgba(255,215,0,0.1) 0%, transparent 100%); }
+h1 { font-family: 'Cinzel'; color:var(--gold); font-size:26px; font-weight:800; text-shadow:0 0 20px rgba(255,215,0,0.5); margin:0; }
+.tagline { color:#aaa; font-size:12px; margin:5px 0 15px; }
+.tab-wrap { display:flex; justify-content:center; gap:8px; margin:0 10px 15px; }
+.tab { flex:1; padding:12px 5px; background:var(--card); border:1px solid #333; border-radius:14px; cursor:pointer; font-size:12px; font-weight:600; }
+.tab.active { background: linear-gradient(135deg, var(--gold), var(--gold-dark)); color:#000; box-shadow:0 0 20px rgba(255,215,0,0.6); }
+.box { background:var(--card); padding:20px 15px; border-radius:20px; margin:0 10px 20px; border:1px solid #333; }
+.box h3 { font-family:'Cinzel'; color:var(--gold); margin:0 0 15px; font-size:16px; }
+input, textarea, select { width:100%; padding:14px; margin:10px 0; border-radius:12px; border:1px solid #444; background:#111; color:#fff; font-size:14px; }
+.btn { width:100%; padding:14px; margin:10px 0; border-radius:12px; border:none; background: linear-gradient(135deg, var(--gold), var(--gold-dark)); color:#000; font-weight:700; font-size:15px; cursor:pointer; }
+.btn:hover { box-shadow:0 5px 20px rgba(255,215,0,0.5); }
+img, canvas, video { width:100%; border-radius:16px; margin-top:15px; border:2px solid #333; background:#000; }
+#loader, #videoLoader { display:none; color:var(--gold); font-weight:600; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>👑 KNIGHTS PRIME</h1>
+  <p class="tagline">AI GENERATE | STYLES | AI VIDEO + SOUND</p>
+</div>
+
+<div class="tab-wrap">
+  <div class="tab active" onclick="showTab('gen', this)">AI Generate</div>
+  <div class="tab" onclick="showTab('style', this)">Styles</div>
+  <div class="tab" onclick="showTab('video', this)">AI Video</div>
+</div>
+
+<!-- TAB 1 -->
+<div id="gen" class="box">
+  <h3>Text → Real AI Photo</h3>
+  <textarea id="prompt" rows="3" placeholder="Example: Cinematic portrait of Nigerian king, 8k"></textarea>
+  <button class="btn" onclick="generateImage()">Generate Image ✨</button>
+  <div id="loader">Summoning AI... 10s ⏳</div>
+  <img id="resultImg" style="display:none;"/>
+  <a id="download" style="display:none;"><button class="btn">Download</button></a>
+</div>
+
+<!-- TAB 2 -->
+<div id="style" class="box" style="display:none;">
+  <h3>Upload Photo → Pick Style</h3>
+  <input type="file" id="upload" accept="image/*">
+  <select id="styleSelect">
+    <option value="cartoon">Cartoon</option><option value="anime">Anime</option>
+    <option value="oil">Oil Painting</option><option value="cyberpunk">Cyberpunk</option>
+  </select>
+  <button class="btn" onclick="applyStyle()">Apply Style</button>
+  <canvas id="styleCanvas" width="512" height="512"></canvas>
+  <a id="downloadStyle" style="display:none;"><button class="btn">Download</button></a>
+</div>
+
+<!-- TAB 3: AI VIDEO - OPTIONAL UPLOAD -->
+<div id="video" class="box" style="display:none;">
+  <h3>Text → AI Video + Sound</h3>
+  <textarea id="videoPrompt" rows="2" placeholder="Describe video: Dragon flying over Lagos"></textarea>
+  
+  <p style="font-size:11px; color:#888;">Optional: Upload 1-3 images. If empty, AI will generate them</p>
+  <input type="file" id="uploadVideo" accept="image/*" multiple>
+
+  <select id="motionSelect">
+    <option value="cinematic">Cinematic Pan</option>
+    <option value="zoom">Dramatic Zoom</option>
+    <option value="orbit">Orbit 360</option>
+  </select>
+
+  <select id="soundSelect">
+    <option value="none">No Sound</option>
+    <option value="dragon">Dragon Roar</option>
+    <option value="explosion">Explosion</option>
+    <option value="magic">Magic Spell</option>
+    <option value="battle">Epic Battle</option>
+  </select>
+
+  <button class="btn" onclick="generateAIVideo()">Generate AI Video 🎬</button>
+  <div id="videoLoader">Preparing... ~9s ⏳</div>
+  <canvas id="videoCanvas" width="256" height="256" style="display:none;"></canvas>
+  <video id="finalVideo" controls style="display:none;"></video>
+  <a id="downloadVideo" style="display:none;"><button class="btn">Download Video</button></a>
+</div>
+
+<script>
+function showTab(id, el){
+  document.querySelectorAll('.box').forEach(b=>b.style.display='none');
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).style.display='block'; el.classList.add('active');
+}
+
+// TAB 1
+async function generateImage(){
+  let prompt = document.getElementById('prompt').value;
+  document.getElementById('loader').style.display='block';
+  let url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=512&height=512&nologo=true`;
+  let img = document.getElementById('resultImg');
+  img.src = url;
+  img.onload = () => {
+    document.getElementById('loader').style.display='none';
+    img.style.display='block';
+    document.getElementById('download').href = url; document.getElementById('download').style.display='block';
+  }
+}
+
+// TAB 2
+let uploadedImg = new Image();
+document.getElementById('upload').onchange = e => { uploadedImg.src = URL.createObjectURL(e.target.files[0]); }
+function applyStyle(){
+  let c = document.getElementById('styleCanvas'); let ctx = c.getContext('2d');
+  ctx.drawImage(uploadedImg,0,0,512,512);
+  document.getElementById('downloadStyle').href = c.toDataURL(); document.getElementById('downloadStyle').style.display='block';
+}
+
+// TAB 3: VIDEO WITH OPTIONAL UPLOAD
+let videoUploadImages = [];
+document.getElementById('uploadVideo').onchange = e => {
+  videoUploadImages = [];
+  for(let file of e.target.files){ 
+    let img = new Image(); 
+    img.src = URL.createObjectURL(file); 
+    videoUploadImages.push(img); 
+  }
+}
+
+async function generateAIVideo(){
+  let prompt = document.getElementById('videoPrompt').value;
+  let motion = document.getElementById('motionSelect').value;
+  let sound = document.getElementById('soundSelect').value;
+  let c = document.getElementById('videoCanvas'); let ctx = c.getContext('2d');
+  let loader = document.getElementById('videoLoader');
+
+  loader.style.display='block';
+  c.style.display='block';
+  c.width = 256; c.height = 256;
+
+  let frames = [];
+
+  // MODE 1: USER UPLOADED IMAGES
+  if(videoUploadImages.length > 0){
+    loader.innerText = 'Using your uploaded images...';
+    for(let img of videoUploadImages){ await new Promise(r => img.onload = r); frames.push(img); }
+    // If only 1 image uploaded, duplicate it 3 times
+    while(frames.length < 3) frames.push(frames[0]);
+  } 
+  // MODE 2: NO UPLOAD = AI GENERATE FRAMES
+  else {
+    for(let i=0; i<3; i++){
+      let framePrompt = `${prompt}, cinematic frame ${i+1}, 8k`;
+      let url = `https://image.pollinations.ai/prompt/${encodeURIComponent(framePrompt)}?width=256&height=256&nologo
