@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Knights Prime AI - Free Image & Video Generator</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+  body { background: #0a0a0f; color: #fff; text-align: center; }
+  header { padding: 20px; background: linear-gradient(90deg, #6a00ff, #00d4ff); }
+  header h1 { font-size: 1.8rem; }
+ .tabs { display: flex; justify-content: center; margin: 20px 0; gap: 10px; }
+ .tab-btn { padding: 12px 20px; border: none; background: #1a1a2e; color: #fff; border-radius: 8px; cursor: pointer; transition: 0.3s; }
+ .tab-btn.active { background: linear-gradient(90deg, #6a00ff, #00d4ff); }
+ .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+  textarea { width: 100%; height: 100px; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #111; color: #fff; margin-bottom: 10px; }
+  input[type="file"] { margin: 10px 0; color: #aaa; }
+ .btn { padding: 12px 24px; border: none; border-radius: 8px; background: linear-gradient(90deg, #6a00ff, #00d4ff); color: #fff; font-weight: bold; cursor: pointer; }
+ .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+ .result { margin-top: 20px; padding: 15px; background: #111; border-radius: 10px; }
+ .result img,.result video { max-width: 100%; border-radius: 8px; }
+  #postbook { display: none; }
+ .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; }
+ .modal-content { background: #1a1a2e; padding: 20px; border-radius: 10px; width: 90%; max-width: 400px; }
+ .modal-content input { width: 100%; padding: 10px; margin: 8px 0; border-radius: 6px; border: 1px solid #333; background: #111; color: #fff; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⚔️ Knights Prime AI</h1>
+  <p>Free Image + Video Generator. No Login Needed</p>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="showTab('image')">Generate Image</button>
+  <button class="tab-btn" onclick="showTab('video')">Generate Video</button>
+  <button class="tab-btn" onclick="checkLogin()">Postbook Feed</button>
+</div>
+
+<div class="container">
+  <!-- IMAGE TAB -->
+  <div id="image" class="tab">
+    <h2>AI Image Generator</h2>
+    <textarea id="imagePrompt" placeholder="Describe your image... e.g. cinematic warrior in neon city"></textarea>
+    <input type="file" id="imageUpload" accept="image/*">
+    <button class="btn" onclick="generateImage()">Generate Image</button>
+    <div id="imageResult" class="result" style="display:none;">
+      <img id="generatedImage" src="" alt="Generated Image">
+      <button class="btn" onclick="downloadMedia('generatedImage')">Download</button>
+      <button class="btn" onclick="promptLogin('image')">Post to Feed</button>
+    </div>
+  </div>
+
+  <!-- VIDEO TAB -->
+  <div id="video" class="tab" style="display:none;">
+    <h2>AI Video Generator</h2>
+    <textarea id="videoPrompt" placeholder="Describe your video... e.g. anime fight scene"></textarea>
+    <input type="file" id="videoUpload" accept="video/*">
+    <button class="btn" onclick="generateVideo()">Generate Video</button>
+    <div id="videoResult" class="result" style="display:none;">
+      <video id="generatedVideo" controls></video>
+      <button class="btn" onclick="downloadMedia('generatedVideo')">Download</button>
+      <button class="btn" onclick="promptLogin('video')">Post to Feed</button>
+    </div>
+  </div>
+
+  <!-- POSTBOOK TAB -->
+  <div id="postbook" class="tab">
+    <h2>📜 Postbook Feed</h2>
+    <div id="feed">Loading posts...</div>
+  </div>
+</div>
+
+<!-- LOGIN MODAL -->
+<div id="loginModal" class="modal">
+  <div class="modal-content">
+    <h3>Login to Post</h3>
+    <input type="email" id="email" placeholder="Email">
+    <input type="password" id="password" placeholder="Password">
+    <button class="btn" onclick="login()">Login / Sign Up</button>
+    <button class="btn" style="background:#333;" onclick="closeModal()">Cancel</button>
+  </div>
+</div>
+
+<script>
+  let currentUser = localStorage.getItem('knightsUser');
+  let pendingPost = null;
+
+  function showTab(tab) {
+    document.querySelectorAll('.tab').forEach(t => t.style.display = 'none');
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(tab).style.display = 'block';
+    event.target.classList.add('active');
+  }
+
+  function checkLogin() {
+    if (!currentUser) {
+      pendingPost = 'feed';
+      document.getElementById('loginModal').style.display = 'flex';
+    } else {
+      showTab('postbook');
+      loadFeed();
+    }
+  }
+
+  function promptLogin(type) {
+    pendingPost = type;
+    document.getElementById('loginModal').style.display = 'flex';
+  }
+
+  function closeModal() {
+    document.getElementById('loginModal').style.display = 'none';
+  }
+
+  function login() {
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    // TODO: Replace with YOUR_API_ENDPOINT for auth
+    fetch('YOUR_API_ENDPOINT/login', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({email, password})
+    })
+   .then(res => res.json())
+   .then(data => {
+      if(data.success) {
+        currentUser = data.user;
+        localStorage.setItem('knightsUser', JSON.stringify(currentUser));
+        closeModal();
+        if(pendingPost === 'feed') showTab('postbook');
+        if(pendingPost === 'image' || pendingPost === 'video') postToFeed(pendingPost);
+      } else alert('Login failed');
+    })
+  }
+
+  function generateImage() {
+    const prompt = document.getElementById('imagePrompt').value;
+    const file = document.getElementById('imageUpload').files[0];
+    // TODO: Replace with YOUR_API_ENDPOINT for image generation
+    fetch('YOUR_API_ENDPOINT/generate-image', {
+      method: 'POST',
+      body: JSON.stringify({prompt}) // add file if needed
+    })
+   .then(res => res.json())
+   .then(data => {
+      document.getElementById('generatedImage').src = data.url;
+      document.getElementById('imageResult').style.display = 'block';
+    })
+  }
+
+  function generateVideo() {
+    const prompt = document.getElementById('videoPrompt').value;
+    const file = document.getElementById('videoUpload').files[0];
+    // TODO: Replace with YOUR_API_ENDPOINT for video generation
+    fetch('YOUR_API_ENDPOINT/generate-video', {
+      method: 'POST',
+      body: JSON.stringify({prompt})
+    })
+   .then(res => res.json())
+   .then(data => {
+      document.getElementById('generatedVideo').src = data.url;
+      document.getElementById('videoResult').style.display = 'block';
+    })
+  }
+
+  function postToFeed(type) {
+    const mediaUrl = type === 'image'? document.getElementById('generatedImage').src : document.getElementById('generatedVideo').src;
+    // TODO: Replace with YOUR_API_ENDPOINT for posting
+    fetch('YOUR_API_ENDPOINT/post', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({user: currentUser, type, mediaUrl})
+    }).then(() => alert('Posted to Postbook!'));
+  }
+
+  function loadFeed() {
+    // TODO: Replace with YOUR_API_ENDPOINT for feed
+    fetch('YOUR_API_ENDPOINT/feed')
+   .then(res => res.json())
+   .then(posts => {
+      document.getElementById('feed').innerHTML = posts.map(p => `<div><p>${p.user}</p><img src="${p.mediaUrl}" style="max-width:100%"></div>`).join('');
+    })
+  }
+
+  function downloadMedia(id) {
+    const el = document.getElementById(id);
+    const a = document.createElement('a');
+    a.href = el.src;
+    a.download = 'knights-prime-media';
+    a.click();
+  }
+</script>
+
+</body>
+</html>
