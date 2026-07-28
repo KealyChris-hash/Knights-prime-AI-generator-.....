@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Knights Prime AI - Free Image & Video Generator</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+  body { background: #0a0a0f; color: #fff; text-align: center; }
+  header { padding: 20px; background: linear-gradient(90deg, #6a00ff, #00d4ff); }
+  header h1 { font-size: 1.8rem; }
+  header p { opacity: 0.8; }
+ .tabs { display: flex; justify-content: center; margin: 20px 0; gap: 10px; flex-wrap: wrap; }
+ .tab-btn { padding: 12px 20px; border: none; background: #1a1a2e; color: #fff; border-radius: 8px; cursor: pointer; font-weight: 600; transition: 0.3s; }
+ .tab-btn.active { background: linear-gradient(90deg, #6a00ff, #00d4ff); }
+ .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+ .tab { display: none; }
+ .tab.active { display: block; }
+  textarea { width: 100%; height: 100px; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #111; color: #fff; margin-bottom: 10px; resize: none; }
+ .btn { padding: 10px 18px; border: none; border-radius: 8px; background: linear-gradient(90deg, #6a00ff, #00d4ff); color: #fff; font-weight: bold; cursor: pointer; margin: 5px; font-size: 0.9rem; }
+ .btn-secondary { background: #333; }
+ .btn-success { background: #00c853; }
+ .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+ .result { margin-top: 20px; padding: 15px; background: #111; border-radius: 10px; }
+ .result img,.result video { max-width: 100%; border-radius: 8px; margin-bottom: 10px; }
+ .action-buttons { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; }
+ .post { background: #1a1a2e; padding: 10px; border-radius: 8px; margin-bottom: 10px; text-align: left; }
+ .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 1000; }
+ .modal-content { background: #1a1a2e; padding: 20px; border-radius: 10px; width: 90%; max-width: 400px; }
+ .modal-content input { width: 100%; padding: 10px; margin: 8px 0; border-radius: 6px; border: 1px solid #333; background: #111; color: #fff; }
+ .loading { color: #00d4ff; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⚔️ Knights Prime AI</h1>
+  <p>Real Image + Real Video Generator</p>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="showTab('image', this)">Generate Image</button>
+  <button class="tab-btn" onclick="showTab('video', this)">Generate Video</button>
+  <button class="tab-btn" onclick="checkLogin()">Postbook Feed</button>
+</div>
+
+<div class="container">
+  <!-- IMAGE TAB -->
+  <div id="image" class="tab active">
+    <h2>AI Image Generator - Photorealistic</h2>
+    <textarea id="imagePrompt" placeholder="e.g. man walking in Lagos street at sunset, DSLR photo"></textarea>
+    <button class="btn" id="genImageBtn" onclick="generateImage()">Generate Image</button>
+    <div id="imageResult" class="result" style="display:none;">
+      <img id="generatedImage" src="" alt="Generated Image">
+      <div class="action-buttons">
+        <button class="btn" onclick="downloadMedia('generatedImage')">⬇️ Download</button>
+        <button class="btn btn-success" onclick="shareMedia('generatedImage')">📤 Share</button>
+        <button class="btn btn-secondary" onclick="promptLogin('image')">📜 Post to Feed</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIDEO TAB -->
+  <div id="video" class="tab">
+    <h2>AI Video Generator - Real Life</h2>
+    <textarea id="videoPrompt" placeholder="e.g. cinematic drone shot of Lagos city, 4k"></textarea>
+    <button class="btn" id="genVideoBtn" onclick="generateVideo()">Generate Video</button>
+    <div id="videoResult" class="result" style="display:none;">
+      <video id="generatedVideo" controls></video>
+      <div class="action-buttons">
+        <button class="btn" onclick="downloadMedia('generatedVideo')">⬇️ Download</button>
+        <button class="btn btn-success" onclick="shareMedia('generatedVideo')">📤 Share</button>
+        <button class="btn btn-secondary" onclick="promptLogin('video')">📜 Post to Feed</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- POSTBOOK TAB -->
+  <div id="postbook" class="tab">
+    <h2>📜 Postbook Feed</h2>
+    <button class="btn btn-secondary" onclick="logout()">Logout</button>
+    <div id="feed">Loading posts...</div>
+  </div>
+</div>
+
+<!-- LOGIN MODAL -->
+<div id="loginModal" class="modal">
+  <div class="modal-content">
+    <h3>Login to Post</h3>
+    <input type="email" id="email" placeholder="Email">
+    <input type="password" id="password" placeholder="Password">
+    <button class="btn" onclick="login()">Login / Sign Up</button>
+    <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+  </div>
+</div>
+
+<script>
+  const FAL_KEY = "PASTE_YOUR_FAL_KEY_HERE"; // <- PUT YOUR NEW KEY HERE
+
+  let currentUser = JSON.parse(localStorage.getItem('knightsUser'));
+  let pendingPost = null;
+
+  function showTab(tab, btn) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(tab).classList.add('active');
+    if(btn) btn.classList.add('active');
+  }
+
+  function checkLogin() {
+    if (!currentUser) { pendingPost = 'feed'; document.getElementById('loginModal').style.display = 'flex'; }
+    else { showTab('postbook'); loadFeed(); }
+  }
+  function promptLogin(type) { pendingPost = type; document.getElementById('loginModal').style.display = 'flex'; }
+  function closeModal() { document.getElementById('loginModal').style.display = 'none'; }
+  function logout() { localStorage.removeItem('knightsUser'); currentUser = null; showTab('image', document.querySelector('.tab-btn')); }
+
+  function login() {
+    const email = document.getElementById('email').value;
+    if(!email) return alert('Enter email');
+    currentUser = {email};
+    localStorage.setItem('knightsUser', JSON.stringify(currentUser));
+    closeModal();
+    if(pendingPost === 'feed') { showTab('postbook'); loadFeed(); }
+    if(pendingPost === 'image' || pendingPost === 'video') { postToFeed(pendingPost); }
+  }
+
+  async function generateImage() {
+    const btn = document.getElementById('genImageBtn');
+    let prompt = document.getElementById('imagePrompt').value;
+    if(!prompt) return alert('Enter a prompt first');
+    if(FAL_KEY === "PASTE_YOUR_FAL_KEY_HERE") return alert('Please add your fal.ai key first');
+
+    prompt = `photorealistic, 8k, highly detailed, cinematic lighting, DSLR photo, ${prompt}`;
+
+    btn.disabled = true; btn.textContent = "Generating... 5s";
+    try {
+      const res = await fetch('https://api.fal.ai/v1/predictions', {
+        method: 'POST',
+        headers: { 'Authorization': `Key ${FAL_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: "fal-ai/fast-sdxl",
+          input: { prompt, negative_prompt: "cartoon, anime, painting, low quality, blurry" }
+        })
+      });
+      const data = await res.json();
+      console.log(data);
+      if(data.response && data.response.images) {
+        document.getElementById('generatedImage').src = data.response.images[0].url;
+        document.getElementById('imageResult').style.display = 'block';
+      } else { alert('Error: ' + (data.detail || 'Failed to generate')) }
+    } catch(e) { alert('Error: ' + e.message) }
+    btn.disabled = false; btn.textContent = "Generate Image";
+  }
+
+  async function generateVideo() {
+    const btn = document.getElementById('genVideoBtn');
+    let prompt = document.getElementById('videoPrompt').value;
+    if(!prompt) return alert('Enter a prompt first');
+    if(FAL_KEY === "PASTE_YOUR_FAL_KEY_HERE") return alert('Please add your fal.ai key first');
+
+    prompt = `cinematic, photorealistic, 4k, smooth motion, ${prompt}`;
+
+    btn.disabled = true; btn.textContent = "Generating... 2 mins";
+    try {
+      const res = await fetch('https://api.fal.ai/v1/predictions', {
+        method: 'POST',
+        headers: { 'Authorization': `Key ${FAL_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: "fal-ai/kling-video",
+          input: { prompt, duration: "5" }
+        })
+      });
+      const data = await res.json();
+      console.log(data);
+      if(data.response && data.response.video) {
+        document.getElementById('generatedVideo').src = data.response.video.url;
+        document.getElementById('videoResult').style.display = 'block';
+      } else { alert('Error: ' + (data.detail || 'Failed to generate')) }
+    } catch(e) { alert('Error: ' + e.message) }
+    btn.disabled = false; btn.textContent = "Generate Video";
+  }
+
+  function postToFeed(type) { alert(`✅ Posted your ${type} to Postbook!`); showTab('postbook'); loadFeed(); }
+  function loadFeed() { document.getElementById('feed').innerHTML = `<div class="post"><p><b>demo</b></p><p>Welcome to Postbook</p></div>`; }
+  function downloadMedia(id) {
+    const el = document.getElementById(id);
+    const a = document.createElement('a');
+    a.href = el.src;
+    a.download = 'knights-prime-' + Date.now();
+    a.click();
+  }
+  function shareMedia(id) {
+    const url = document.getElementById(id).src;
+    if (navigator.share) { navigator.share({ title: 'Knights Prime AI', url: url }); }
+    else { navigator.clipboard.writeText(url); alert('📋 Link copied!'); }
+  }
+</script>
+</body>
+</html>
