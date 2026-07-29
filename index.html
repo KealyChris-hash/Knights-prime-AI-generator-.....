@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Knights Prime AI Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root { --gold:#FFD700; --card:rgba(25,25,25,0.85); --red:#ff3333; --green:#00cc66; }
+* { box-sizing: border-box; }
+body { font-family: 'Poppins'; background:#000; color:#fff; padding:10px; margin:0; }
+.header { text-align:center; padding:15px; }
+h1 { font-family: 'Cinzel'; color:var(--gold); margin:0; font-size:20px; }
+.tab-wrap { display:flex; gap:4px; margin:10px 0; flex-wrap:wrap; }
+.tab { flex:1; min-width:18%; padding:10px 4px; background:var(--card); border-radius:12px; cursor:pointer; font-size:10px; text-align:center; font-weight:600; }
+.tab.active { background:var(--gold); color:#000; }
+.box { background:var(--card); padding:18px; border-radius:18px; margin:12px 0; }
+input, textarea, select { width:100%; padding:12px; margin:8px 0; border-radius:10px; border:1px solid #444; background:#111; color:#fff; font-size:14px; }
+.btn { width:100%; padding:14px; border-radius:12px; border:none; background:var(--gold); color:#000; font-weight:800; cursor:pointer; font-size:15px; margin-top:8px; }
+.btn-green { background:var(--green); color:#fff; }
+.btn-danger { background:var(--red); color:#fff; }
+.btn-sec { background:#333; color:#fff; }
+.btn-row { display:flex; gap:6px; }
+.btn-row.btn { flex:1; font-size:12px; padding:10px; }
+.bg-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin:10px 0; max-height:300px; overflow-y:auto; }
+.bg-option { border:2px solid #333; border-radius:10px; cursor:pointer; position:relative; }
+.bg-option.selected { border:2px solid var(--gold); }
+.bg-option img { width:100%; height:80px; object-fit:cover; border-radius:8px; margin:0; }
+.bg-name { position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,0.8); font-size:8px; padding:3px; text-align:center; }
+img, video { width:100%; border-radius:14px; margin:10px 0; background:#000; }
+label { font-size:12px; color:#aaa; }
+#mvActions { display:none; }
+</style>
+</head>
+<body>
+
+<div class="header"><h1>👑 KNIGHTS PRIME AI</h1></div>
+
+<div class="tab-wrap">
+  <div class="tab active" onclick="showTab('ai', this)">1. AI Generate</div>
+  <div class="tab" onclick="showTab('styles', this)">2. Styles</div>
+  <div class="tab" onclick="showTab('video', this)">3. AI Video</div>
+  <div class="tab" onclick="showTab('music', this)">4. AI MV</div>
+  <div class="tab" onclick="showTab('postbook', this)">5. Feed</div>
+</div>
+
+<div id="ai" class="box"><h3>AI Image Generator</h3><input id="userNameAI" placeholder="Your Name"/><textarea id="prompt" placeholder="Describe..." rows="3"></textarea><button class="btn" onclick="generateAndPost()">Generate & Post ✨</button><img id="resultImg" style="display:none;"/></div>
+<div id="styles" class="box" style="display:none;"><h3>AI Image to Style</h3><input id="userNameStyle" placeholder="Your Name"/><input type="file" id="uploadStyleImg" accept="image/*"><img id="styleUploadPreview" style="display:none; max-height:200px;"/><textarea id="promptStyle" placeholder="Add details" rows="2"></textarea><select id="styleSelect"><option value="realistic photo">Realistic</option><option value="anime style">Anime</option><option value="cyberpunk style">Cyberpunk</option><option value="luxury gold style">Luxury Gold</option></select><button class="btn" onclick="generateStyleAndPost()">Apply Style & Post 🎨</button><img id="resultStyle" style="display:none;"/></div>
+<div id="video" class="box" style="display:none;"><h3>AI Text Video</h3><input id="userNameVid" placeholder="Your Name"/><input type="file" id="uploadVideoImg" accept="image/*"><textarea id="textDesc" placeholder="Text on video" rows="2"></textarea><button class="btn" onclick="createAndPostVideo()">Create & Post Video 🎬</button><img id="videoPreview" style="display:none;"/></div>
+
+<div id="music" class="box" style="display:none;">
+  <h3>AI Music Video Studio</h3>
+  <input id="userNameMV" placeholder="Your Name"/>
+  <label>1. Upload Voice/Audio</label><input type="file" id="uploadAudioMV" accept="audio/*"><audio id="voicePreview" controls style="display:none;"></audio>
+  <label>2. MV Duration</label><select id="mvDuration"><option value="10">10 Seconds</option><option value="30">30 Seconds</option><option value="60">1 Minute</option><option value="120">2 Minutes</option><option value="180">3 Minutes</option><option value="480">8 Minutes - MAX</option></select>
+  <label>3. Lyrics</label><textarea id="lyrics" placeholder="Type lyrics... or AI Generate" rows="4"></textarea>
+  <label>4. AI Generate Lyrics for Duration</label><input id="lyricTopic" placeholder="Topic: love, hustle..."/><button class="btn btn-sec" onclick="generateAILyricsForDuration()">AI Generate Lyrics ✍️</button>
+  <label>5. Upload Face</label><input type="file" id="uploadFace" accept="image/*">
+  <label>6. Select Background - 26 Options</label><div class="bg-grid" id="bgGrid"></div>
+  <button id="renderBtn" class="btn" onclick="createAndPostMV()">Render MV 🎤</button>
+  <video id="mvVideoPreview" controls style="display:none;"></video>
+  <div id="mvActions" class="btn-row">
+    <button class="btn btn-sec" onclick="downloadMV()">⬇️ Download</button>
+    <button class="btn btn-sec" onclick="shareMV()">📤 Share</button>
+    <button class="btn btn-green" onclick="postToFeed()">🚀 Post to Feed</button>
+  </div>
+</div>
+
+<div id="postbook" class="box" style="display:none;"><h3>🌍 LIVE FEED</h3><p id="status">Loading...</p><div id="feed"></div></div>
+
+<script>
+const BIN_ID = "6a69c730da38895dfe9f15e6";
+const API_KEY = "$2a$10$otvMxIWUOKw5TjMswWxjDO8.72tOovwUh93PIeXblec9OZ0nTuDsW"; // YOUR KEY
+const API_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+
+let posts = []; let mediaFiles = {}; let selectedBG = ""; let myName = localStorage.getItem('knights_name') || '';
+let currentMVBlob = null;
+
+const BACKGROUNDS = [
+  {name:"Luxury Cars", url:"https://images.unsplash.com/photo-1492144534655-a0c2b2d5f1d2?w=512&h=512&fit=crop"},
+  {name:"Sunflower Field", url:"https://images.unsplash.com/photo-1470509037663-253afd7f0f51?w=512&h=512&fit=crop"},
+  {name:"Neon City", url:"https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=512&h=512&fit=crop"},
+  {name:"Mansion Pool", url:"https://images.unsplash.com/photo-1613977257363-aaae5a9817ff?w=512&h=512&fit=crop"},
+  {name:"Palace", url:"https://images.unsplash.com/photo-1541123356219-284ebe98ae3b?w=512&h=512&fit=crop"},
+  {name:"Studio", url:"https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=512&h=512&fit=crop"},
+  {name:"Private Jet", url:"https://images.unsplash.com/photo-1542296332-2e4473faf563?w=512&h=512&fit=crop"},
+  {name:"Yacht", url:"https://images.unsplash.com/photo-1569263973107-1b972bf62f3a?w=512&h=512&fit=crop"},
+  {name:"Gold Bars", url:"https://images.unsplash.com/photo-1610375461362-697d7871c4d8?w=512&h=512&fit=crop"},
+  {name:"Penthouse", url:"https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=512&h=512&fit=crop"},
+  {name:"Tokyo Night", url:"https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=512&h=512&fit=crop"},
+  {name:"Dubai Skyline", url:"https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=512&h=512&fit=crop"},
+  {name:"Beach Sunset", url:"https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=512&h=512&fit=crop"},
+  {name:"Casino", url:"https://images.unsplash.com/photo-1596838132731-3301c3fd4317?w=512&h=512&fit=crop"},
+  {name:"Space Galaxy", url:"https://images.unsplash.com/photo-1446776653964-20c1d3a81b06?w=512&h=512&fit=crop"},
+  {name:"Throne Room", url:"https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=512&h=512&fit=crop"},
+  {name:"Sports Car", url:"https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=512&h=512&fit=crop"},
+  {name:"Rainforest", url:"https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=512&h=512&fit=crop"},
+  {name:"Snow Mansion", url:"https://images.unsplash.com/photo-1518780664697-55e3ad937233?w=512&h=512&fit=crop"},
+  {name:"Desert", url:"https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?w=512&h=512&fit=crop"},
+  {name:"Recording Studio", url:"https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=512&h=512&fit=crop"},
+  {name:"Diamond", url:"https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=512&h=512&fit=crop"},
+  {name:"Helicopter", url:"https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=512&h=512&fit=crop"},
+  {name:"Art Gallery", url:"https://images.unsplash.com/photo-1577720643273-42f09339a1ce?w=512&h=512&fit=crop"},
+  {name:"Night Club", url:"https://images.unsplash.com/photo-1566737236500-c8ac43014a67?w=512&h=512&fit=crop"},
+  {name:"Tropical Island", url:"https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=512&h=512&fit=crop"}
+];
+
+function showTab(id, el){
+  document.querySelectorAll('.box').forEach(b=>b.style.display='none');
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).style.display='block'; el.classList.add('active');
+  if(id==='postbook') loadFeed();
+  if(id==='music') loadBackgrounds();
+}
+
+function loadBackgrounds(){
+  const grid = document.getElementById('bgGrid');
+  grid.innerHTML = BACKGROUNDS.map((bg,i) => `<div class="bg-option" onclick="selectBG('${bg.url}', ${i})"><img src="${bg.url}"/><div class="bg-name">${bg.name}</div></div>`).join('');
+}
+
+function selectBG(url, i){ selectedBG = url; document.querySelectorAll('.bg-option').forEach(b=>b.classList.remove('selected')); document.querySelectorAll('.bg-option')[i].classList.add('selected'); }
+
+['userNameAI','userNameStyle','userNameVid','userNameMV'].forEach(id=>{ document.getElementById(id).value = myName; document.getElementById(id).oninput = e => { myName = e.target.value; localStorage.setItem('knights_name', myName); } })
+
+function fileToBase64(file){ return new Promise(res=>{let r=new FileReader(); r.onload=()=>res(r.result); r.readAsDataURL(file);}); }
+document.getElementById('uploadStyleImg').onchange = async e => { if(e.target.files[0]) { mediaFiles.styleImg = await fileToBase64(e.target.files[0]); document.getElementById('styleUploadPreview').src = mediaFiles.styleImg; document.getElementById('styleUploadPreview').style.display='block'; } }
+document.getElementById('uploadVideoImg').onchange = async e => { if(e.target.files[0]) mediaFiles.videoImg = await fileToBase64(e.target.files[0]); }
+document.getElementById('uploadAudioMV').onchange = async e => { if(e.target.files[0]) { mediaFiles.audioMV = await fileToBase64(e.target.files[0]); document.getElementById('voicePreview').src = mediaFiles.audioMV; document.getElementById('voicePreview').style.display='block'; } }
+document.getElementById('uploadFace').onchange = async e => { if(e.target.files[0]) mediaFiles.face = await fileToBase64(e.target.files[0]); }
+
+async function loadFeed(){
+  document.getElementById('status').innerText = "Loading...";
+  try {
+    let res = await fetch(API_URL + "/latest", {headers:{"X-Master-Key": API_KEY}});
+    let data = await res.json();
+    posts = data.record.posts || [];
+    renderFeed();
+    document.getElementById('status').innerText = posts.length === 0? "No posts yet" : "";
+  } catch(e) {
+    document.getElementById('status').innerText = "ERROR: Check API Key or Internet";
+  }
+}
+async function savePosts(){
+  await fetch(API_URL, { method: "PUT", headers: {"Content-Type": "application/json", "X-Master-Key": API_KEY}, body: JSON.stringify({posts}) });
+}
+
+async function generateAndPost(){ let name = document.getElementById('userNameAI').value || "Anonymous"; let prompt = document.getElementById('prompt').value; if(!prompt) return alert("Type prompt"); let imgUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=512&height=512&nologo=true`; document.getElementById('resultImg').src = imgUrl; document.getElementById('resultImg').style.display='block'; posts.unshift({id:Date.now(), type:'image', name, content:prompt, media:imgUrl, likes:0, comments:[], time:new Date().toLocaleString()}); await savePosts(); showTab('postbook', document.querySelectorAll('.tab')[4]); }
+async function generateStyleAndPost(){ let name = document.getElementById('userNameStyle').value || "Anonymous"; let prompt = document.getElementById('promptStyle').value; let style = document.getElementById('styleSelect').value; if(!mediaFiles.styleImg) return alert("Upload an image first"); let fullPrompt = `${prompt}, ${style}`; let imgUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(fullPrompt)}?width=512&height=512&nologo=true`; document.getElementById('resultStyle').src = imgUrl; document.getElementById('resultStyle').style.display='block'; posts.unshift({id:Date.now(), type:'style', name, content:fullPrompt, media:imgUrl, likes:0, comments:[], time:new Date().toLocaleString()}); await savePosts(); showTab('postbook', document.querySelectorAll('.tab')[4]); }
+async function createAndPostVideo(){ let name = document.getElementById('userNameVid').value || "Anonymous"; let text = document.getElementById('textDesc').value; if(!mediaFiles.videoImg) return alert("Upload image"); let canvas = document.createElement('canvas'); canvas.width=512; canvas.height=512; let ctx = canvas.getContext('2d'); let img = new Image(); img.src = mediaFiles.videoImg; await new Promise(r=>img.onload=r); ctx.drawImage(img,0,0,512,512); ctx.font="bold 30px Poppins"; ctx.fillStyle="#FFD700"; ctx.textAlign="center"; ctx.strokeStyle="#000"; ctx.lineWidth=3; ctx.strokeText(text,256,470); ctx.fillText(text,256,470); let url = canvas.toDataURL(); document.getElementById('videoPreview').src = url; document.getElementById('videoPreview').style.display='block'; posts.unshift({id:Date.now(), type:'video', name, content:text, media:url, likes:0, comments:[], time:new Date().toLocaleString()}); await savePosts(); showTab('postbook', document.querySelectorAll('.tab')[4]); }
+
+function generateAILyricsForDuration(){
+  let topic = document.getElementById('lyricTopic').value || "life";
+  let duration = parseInt(document.getElementById('mvDuration').value);
+  let lines = Math.floor(duration / 3);
+  let templates = [`Chasing ${topic} every day`,`Money on my mind`,`Crown for ${topic}`,`Knights rise for ${topic}`,`From zero to ${topic}`];
+  let aiLyrics = []; for(let i=0; i<lines; i++){ aiLyrics.push(templates[i % templates.length]); }
+  document.getElementById('lyrics').value = aiLyrics.join('\n');
+  alert(`${lines} lines generated for ${duration}s MV`);
+}
+
+async function createAndPostMV(){
+  let name = document.getElementById('userNameMV').value || "Anonymous";
+  let lyrics = document.getElementById('lyrics').value.split('\n').filter(l=>l);
+  let duration = parseInt(document.getElementById('mvDuration').value) * 1000;
+  if(!selectedBG) return alert("Select a background");
+  if(!mediaFiles.face) return alert("Upload Face");
+  if(!mediaFiles.audioMV) return alert("Upload Voice");
+  if(lyrics.length === 0) return alert("Add lyrics");
+
+  document.getElementById('renderBtn').innerText = "Rendering MV...";
+  document.getElementById('renderBtn').disabled = true;
+
+  let canvas = document.createElement('canvas'); canvas.width=512; canvas.height=512; let ctx = canvas.getContext('2d');
+  let stream = canvas.captureStream(24);
+  let recorder = new MediaRecorder(stream, {mimeType:'video/webm'});
+  let chunks = [];
+  recorder.ondataavailable = e => chunks.push(e.data);
+
+  recorder.onstop = () => {
+    currentMVBlob = new Blob(chunks, {type:'video/webm'});
+    let videoUrl = URL.createObjectURL(currentMVBlob);
+    document.getElementById('mvVideoPreview').src = videoUrl;
+    document.getElementById('mvVideoPreview').style.display='block';
+    document.getElementById('mvActions').style.display='flex';
+    document.getElementById('renderBtn').innerText = "Render MV 🎤";
+    document.getElementById('renderBtn').disabled = false;
+  };
+
+  recorder.start();
+  let bg = new Image(); bg.crossOrigin="anonymous"; bg.src = selectedBG; await new Promise(r=>bg.onload=r);
+  let face = new Image(); face.src = mediaFiles.face; await new Promise(r=>face.onload=r);
+  let audio = new Audio(mediaFiles.audioMV);
+
+  let startTime = Date.now();
+  let lineTime = duration / lyrics.length;
+
+  let interval = setInterval(() => {
+    let elapsed = Date.now() - startTime;
+    ctx.drawImage(bg,0,0,512,512);
+    ctx.drawImage(face,156,156,200,200);
+    let currentLineIndex = Math.floor(elapsed / lineTime);
+    let lyric = lyrics[currentLineIndex % lyrics.length] || "";
+    ctx.font="bold 20px Poppins"; ctx.fillStyle="#fff"; ctx.textAlign="center"; ctx.strokeStyle="#000"; ctx.lineWidth=4;
+    ctx.strokeText(lyric,256,480); ctx.fillText(lyric,256,480);
+    if(elapsed >= duration) { clearInterval(interval); recorder.stop(); audio.pause(); }
+  }, 41);
+
+  audio.play();
+}
+
+function downloadMV(){
+  if(!currentMVBlob) return;
+  let a = document.createElement('a');
+  a.href = URL.createObjectURL(currentMVBlob);
+  a.download = `KnightsPrime_MV_${Date.now()}.webm`;
+  a.click();
+}
+
+function shareMV(){
+  if(!currentMVBlob) return;
+  if(navigator.share){
+    let file = new File([currentMVBlob], "mv.webm", {type:"video/webm"});
+    navigator.share({title:"Knights Prime MV", files:[file]});
+  } else {
+    alert("Share not supported. Use Download instead.");
+  }
+}
+
+async function postToFeed(){
+  if(!currentMVBlob) return;
+  let name = document.getElementById('userNameMV').value || "Anonymous";
+  let lyrics = document.getElementById('lyrics').value;
+  let duration = parseInt(document.getElementById('mvDuration').value);
+
+  let reader = new FileReader();
+  reader.readAsDataURL(currentMVBlob);
+  reader.onloadend = async () => {
+    let base64Video = reader.result;
+    posts.unshift({
+      id:Date.now(), type:'mv', name, content:lyrics,
+      media:base64Video, audio:mediaFiles.audioMV, bg:selectedBG, face:mediaFiles.face,
+      duration: duration, likes:0, comments:[], time:new Date().toLocaleString()
+    });
+    await savePosts();
+    alert("Posted to Feed!");
+    showTab('postbook', document.querySelectorAll('.tab')[4]);
+  }
+}
+
+function renderFeed(){
+  document.getElementById('feed').innerHTML = posts.map(p => `
+    <div style="background:#111; padding:14px; border-radius:16px; margin:12px 0;">
+      <b style="color:var(--gold)">${p.name}</b> <span style="font-size:10px">${p.type} ${p.duration? '• '+p.duration+'s' : ''} • ${p.time}</span>
+      ${p.type==='mv'? `<video controls src="${p.media}"></video><audio controls src="${p.audio}"></audio>` : p.media? `<img src="${p.media}"/>` : ''}
+      <p style="white-space:pre-line; font-size:12px;">${p.content.substring(0,200)}...</p>
+      <div><button onclick="likePost(${p.id})">❤️ ${p.likes}</button><button onclick="commentPost(${p.id})">💬 ${p.comments.length}</button>${p.name === myName? `<button class="btn-danger" onclick="deletePost(${p.id})">🗑️ Delete</button>` : ''}</div>
+    </div>
+  `).join('');
+}
+
+async function likePost(id){ posts.find(p=>p.id===id).likes++; await savePosts(); renderFeed(); }
+async function commentPost(id){ let c = prompt("Comment:"); if(c){ posts.find(p=>p.id===id).comments.push(myName + ": " + c); await savePosts(); renderFeed(); } }
+async function deletePost(id){ if(confirm("Delete?")){ posts = posts.filter(p=>p.id!==id); await savePosts(); renderFeed(); } }
+
+loadFeed(); setInterval(loadFeed, 15000);
+</script>
+</body>
+</html>
