@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Knights Prime AI Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root { --gold:#FFD700; --card:rgba(25,25,25,0.85); --red:#ff3333; }
+* { box-sizing: border-box; }
+body { font-family: 'Poppins'; background:#000; color:#fff; padding:10px; margin:0; }
+.header { text-align:center; padding:15px; }
+h1 { font-family: 'Cinzel'; color:var(--gold); margin:0; font-size:22px; }
+.tab-wrap { display:flex; gap:5px; margin:15px 0; flex-wrap:wrap; }
+.tab { flex:1; padding:12px; background:var(--card); border-radius:14px; cursor:pointer; font-size:11px; text-align:center; font-weight:600; }
+.tab.active { background:var(--gold); color:#000; }
+.box { background:var(--card); padding:20px; border-radius:20px; margin:15px 0; backdrop-filter: blur(10px); }
+input, textarea { width:100%; padding:14px; margin:10px 0; border-radius:12px; border:1px solid #444; background:#111; color:#fff; font-size:14px; }
+.btn { width:100%; padding:14px; border-radius:12px; border:none; background:var(--gold); color:#000; font-weight:800; cursor:pointer; font-size:15px; }
+.btn-danger { background:var(--red); color:#fff; }
+.post-card { background:#111; padding:15px; border-radius:16px; margin:15px 0; border:1px solid #222; }
+.post-actions { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+.post-actions button { background:#222; color:#fff; padding:8px 12px; border-radius:10px; border:none; font-size:12px; cursor:pointer; font-weight:600; }
+img, audio { width:100%; border-radius:16px; margin:10px 0; background:#000; }
+#status { color:var(--gold); text-align:center; font-weight:600; }
+label { font-size:12px; color:#aaa; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>👑 KNIGHTS PRIME POSTBOOK</h1>
+  <p style="font-size:12px; color:#aaa">AI Image + Video + Music Video Social</p>
+</div>
+
+<div class="tab-wrap">
+  <div class="tab active" onclick="showTab('gen', this)">Generate</div>
+  <div class="tab" onclick="showTab('video', this)">Video</div>
+  <div class="tab" onclick="showTab('music', this)">Music MV</div>
+  <div class="tab" onclick="showTab('postbook', this)">Feed</div>
+</div>
+
+<!-- TAB 1: GENERATE IMAGE -->
+<div id="gen" class="box">
+  <h3>AI Image Generator</h3>
+  <input id="userNameGen" placeholder="Your Name"/>
+  <textarea id="prompt" placeholder="Describe your image: luxury car, anime girl, etc" rows="3"></textarea>
+  <button class="btn" onclick="generateAndPost()">Generate & Post ✨</button>
+  <img id="resultImg" style="display:none;"/>
+</div>
+
+<!-- TAB 2: TEXT VIDEO -->
+<div id="video" class="box" style="display:none;">
+  <h3>Text Video Creator</h3>
+  <input id="userNameVid" placeholder="Your Name"/>
+  <label>Upload Background Image</label>
+  <input type="file" id="uploadVideoImg" accept="image/*">
+  <textarea id="textDesc" placeholder="Text to show on video" rows="2"></textarea>
+  <button class="btn" onclick="createAndPostVideo()">Create & Post Video 🎬</button>
+  <img id="videoPreview" style="display:none;"/>
+</div>
+
+<!-- TAB 3: MUSIC VIDEO -->
+<div id="music" class="box" style="display:none;">
+  <h3>Music Video Creator</h3>
+  <input id="userNameMV" placeholder="Your Name"/>
+  <label>Upload Audio/Music</label>
+  <input type="file" id="uploadAudio" accept="audio/*">
+  <label>Upload Face Image</label>
+  <input type="file" id="uploadFace" accept="image/*">
+  <label>Upload Background</label>
+  <input type="file" id="uploadBG" accept="image/*">
+  <textarea id="lyrics" placeholder="Lyrics - 1 line per lyric" rows="3"></textarea>
+  <button class="btn" onclick="createAndPostMV()">Create & Post MV 🎵</button>
+  <img id="mvPreview" style="display:none;"/>
+</div>
+
+<!-- TAB 4: POSTBOOK FEED -->
+<div id="postbook" class="box" style="display:none;">
+  <h3>🌍 LIVE PUBLIC FEED</h3>
+  <p id="status">Loading posts...</p>
+  <div id="feed"></div>
+</div>
+
+<script>
+// ========= YOUR JSONBIN SETUP =========
+const BIN_ID = "6a69c730da38895dfe9f15e6";
+const API_KEY = "$2a$10$otvMxIWUOKw5TjMswWxjDO8.72tOovwUh93PIeXblec9OZ0nTuDsW"; // <-- GET FROM jsonbin.io > API tab
+const API_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+// ======================================
+
+let posts = [];
+let mediaFiles = {};
+let myName = localStorage.getItem('knights_name') || '';
+
+function showTab(id, el){
+  document.querySelectorAll('.box').forEach(b=>b.style.display='none');
+  document.querySelectorAll('.tab').forEach(t
