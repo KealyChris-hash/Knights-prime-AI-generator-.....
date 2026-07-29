@@ -73,7 +73,7 @@ label { font-size:12px; color:#aaa; }
 
 <script>
 const BIN_ID = "6a69c730da38895dfe9f15e6";
-const API_KEY = "PASTE_YOUR_MASTER_KEY_HERE"; // <-- IMPORTANT: REPLACE THIS
+const API_KEY = "$2a$10$otvMxIWUOKw5TjMswWxjDO8.72tOovwUh93PIeXblec9OZ0nTuDsW"; // <-- IMPORTANT: REPLACE THIS
 const API_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
 
 let posts = []; let mediaFiles = {}; let selectedBG = ""; let myName = localStorage.getItem('knights_name') || '';
@@ -133,7 +133,7 @@ document.getElementById('uploadFace').onchange = async e => { if(e.target.files[
 
 async function loadFeed(){
   document.getElementById('status').innerText = "Loading...";
-  if(API_KEY === "PASTE_YOUR_MASTER_KEY_HERE") {
+  if(API_KEY === "$2a$10$otvMxIWUOKw5TjMswWxjDO8.72tOovwUh93PIeXblec9OZ0nTuDsW") {
     document.getElementById('status').innerText = "ERROR: Please paste your JSONBIN Master Key in the code";
     return;
   }
