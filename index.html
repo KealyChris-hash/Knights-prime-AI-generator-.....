@@ -148,7 +148,7 @@ async function loadFeed(){
   }
 }
 async function savePosts(){
-  if(API_KEY === "PASTE_YOUR_MASTER_KEY_HERE") return alert("ERROR: Please paste your JSONBIN Master Key in the code");
+  if(API_KEY === "$2a$10$otvMxIWUOKw5TjMswWxjDO8.72tOovwUh93PIeXblec9OZ0nTuDsW") return alert("ERROR: Please paste your JSONBIN Master Key in the code");
   await fetch(API_URL, { method: "PUT", headers: {"Content-Type": "application/json", "X-Master-Key": API_KEY}, body: JSON.stringify({posts}) });
 }
 
